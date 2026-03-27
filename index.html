@@ -427,7 +427,7 @@
         */}
         {selectedMood ? (
           <div className="results-section">
-            <h2>{selectedMood.label} Playlist</h2>
+            <h2>{selectedMood.label} Playlist <span style={{fontSize: "14px", color: "#999", fontWeight: "normal"}}>({selectedMood.songs.length} songs)</span></h2>
 
             {/* Vibe description */}
             <div className="vibe-box">
