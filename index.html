@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mood Music Recommender</title>
+
+  <!-- Loading React and Babel from CDN so we don't need npm or a build tool -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Reset default browser styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    /* Centers the content and limits the width */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* The white card at the top with the mood buttons */
+    .mood-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .mood-section h2 {
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #444;
+    }
+
+    /* Flex container so buttons wrap onto next line if needed */
+    .mood-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Each mood button - pill shaped */
+    .mood-btn {
+      padding: 10px 18px;
+      border: 2px solid #ddd;
+      border-radius: 20px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .mood-btn:hover {
+      border-color: #6c63ff;
+      color: #6c63ff;
+    }
+
+    /* This class is added when a button is clicked */
+    .mood-btn.selected {
+      background-color: #6c63ff;
+      color: white;
+      border-color: #6c63ff;
+    }
+
+    /* The white card that shows the playlist results */
+    .results-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .results-section h2 {
+      margin-bottom: 15px;
+      color: #444;
+    }
+
+    /* Purple left-border box for the vibe description */
+    .vibe-box {
+      background: #f8f7ff;
+      border-left: 4px solid #6c63ff;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .vibe-box p {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Row of hashtag tags */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .tag {
+      background: #ede9ff;
+      color: #6c63ff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .palette-label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    /* Row of coloured squares representing the mood */
+    .palette {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .palette-colour {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+
+    /* Remove default list bullet points */
+    .song-list {
+      list-style: none;
+    }
+
+    /* Each row in the song list */
+    .song-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      gap: 12px;
+    }
+
+    /* No border on the last item */
+    .song-item:last-child {
+      border-bottom: none;
+    }
+
+    .song-number {
+      color: #999;
+      font-size: 13px;
+      width: 20px;
+    }
+
+    .song-emoji {
+      font-size: 20px;
+    }
+
+    /* flex: 1 makes this take up all remaining space in the row */
+    .song-info {
+      flex: 1;
+    }
+
+    .song-name {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .song-artist {
+      color: #666;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    /* Small grey pill showing the genre */
+    .song-genre {
+      font-size: 11px;
+      background: #f0f0f0;
+      padding: 3px 8px;
+      border-radius: 10px;
+      color: #555;
+    }
+
+    /* Red YouTube button on the right of each song */
+    .yt-btn {
+      font-size: 11px;
+      background: #ff0000;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 10px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .yt-btn:hover {
+      background: #cc0000;
+    }
+
+    /* Shown before the user picks a mood */
+    .placeholder {
+      text-align: center;
+      color: #aaa;
+      padding: 40px 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+  /*
+    MOOD_DATA holds all the content for the app.
+    Each key is a mood ID (e.g. "happy"), and the value is an object with:
+      - label:   the text shown on the button
+      - vibe:    a short description shown at the top of the results
+      - tags:    array of hashtag words
+      - palette: array of hex colour codes representing the mood
+      - songs:   array of song objects (name, artist, genre, emoji)
+  */
+  const MOOD_DATA = {
+    happy: {
+      label: "😄 Happy",
+      vibe: "Upbeat and feel-good tracks to match your great mood. These songs are all about celebrating life and having fun.",
+      tags: ["upbeat", "feel-good", "energetic", "positive", "sunny"],
+      palette: ["#FFD700", "#FF8C00", "#FF6347"],
+      songs: [
+        { name: "Happy",                  artist: "Pharrell Williams",         genre: "Pop",      emoji: "😊" },
+        { name: "Can't Stop the Feeling", artist: "Justin Timberlake",         genre: "Pop",      emoji: "🕺" },
+        { name: "Uptown Funk",            artist: "Mark Ronson ft. Bruno Mars", genre: "Funk",    emoji: "🎷" },
+        { name: "Good as Hell",           artist: "Lizzo",                     genre: "R&B",      emoji: "💪" },
+        { name: "Walking on Sunshine",    artist: "Katrina & The Waves",       genre: "Pop Rock", emoji: "☀️" },
+        { name: "Levitating",             artist: "Dua Lipa",                  genre: "Pop",      emoji: "✨" },
+      ]
+    },
+
+    sad: {
+      label: "😢 Sad",
+      vibe: "Sometimes you just need music that understands how you feel. These songs sit with you in the difficult moments.",
+      tags: ["emotional", "slow", "heartfelt", "melancholy", "reflective"],
+      palette: ["#4A90D9", "#7B8FA1", "#B0C4DE"],
+      songs: [
+        { name: "Someone Like You",          artist: "Adele",           genre: "Pop Soul",   emoji: "💔" },
+        { name: "The Night We Met",          artist: "Lord Huron",      genre: "Indie Folk", emoji: "🌙" },
+        { name: "Skinny Love",               artist: "Bon Iver",        genre: "Indie Folk", emoji: "🍂" },
+        { name: "Fix You",                   artist: "Coldplay",        genre: "Alternative",emoji: "🕯️" },
+        { name: "Liability",                 artist: "Lorde",           genre: "Indie Pop",  emoji: "🌧️" },
+        { name: "When the Party's Over",     artist: "Billie Eilish",   genre: "Pop",        emoji: "😔" },
+      ]
+    },
+
+    focused: {
+      label: "🎯 Focused",
+      vibe: "Low distraction music to help you get into a flow state. Mostly instrumental or repetitive beats so the music stays in the background.",
+      tags: ["instrumental", "lo-fi", "calm", "steady", "productive"],
+      palette: ["#2ECC71", "#27AE60", "#1ABC9C"],
+      songs: [
+        { name: "Experience",               artist: "Ludovico Einaudi", genre: "Classical",  emoji: "🎹" },
+        { name: "Intro",                    artist: "The xx",           genre: "Indie",      emoji: "🎧" },
+        { name: "Comptine d'un autre été",  artist: "Yann Tiersen",    genre: "Classical",  emoji: "🎼" },
+        { name: "Sunset Lover",             artist: "Petit Biscuit",   genre: "Electronic", emoji: "🌅" },
+        { name: "Retrograde",               artist: "James Blake",     genre: "Electronic", emoji: "💻" },
+        { name: "Gymnopédie No.1",          artist: "Erik Satie",      genre: "Classical",  emoji: "🎵" },
+      ]
+    },
+
+    chill: {
+      label: "😌 Chill",
+      vibe: "Relaxed and easy-going tracks for when you just want to unwind. Nothing too intense, just good vibes.",
+      tags: ["relaxed", "mellow", "smooth", "laid-back", "easy"],
+      palette: ["#87CEEB", "#98D8C8", "#B0E0E6"],
+      songs: [
+        { name: "Redbone",         artist: "Childish Gambino", genre: "R&B",       emoji: "🌊" },
+        { name: "Banana Pancakes", artist: "Jack Johnson",     genre: "Acoustic",  emoji: "🍌" },
+        { name: "Put It All on Me",artist: "Ed Sheeran",       genre: "Acoustic",  emoji: "🎸" },
+        { name: "Electric Feel",   artist: "MGMT",             genre: "Indie Pop", emoji: "⚡" },
+        { name: "Bloom",           artist: "The Paper Kites",  genre: "Folk",      emoji: "🌸" },
+        { name: "Coffee",          artist: "beabadoobee",      genre: "Indie",     emoji: "☕" },
+      ]
+    },
+
+    energetic: {
+      label: "⚡ Energetic",
+      vibe: "High energy tracks to get you pumped up. Good for the gym, running, or just when you need a boost.",
+      tags: ["hype", "fast", "powerful", "intense", "motivating"],
+      palette: ["#FF4500", "#FF6347", "#FF0000"],
+      songs: [
+        { name: "HUMBLE.",          artist: "Kendrick Lamar", genre: "Hip-Hop",    emoji: "🔥" },
+        { name: "Lose Yourself",    artist: "Eminem",         genre: "Hip-Hop",    emoji: "💥" },
+        { name: "Thunderstruck",    artist: "AC/DC",          genre: "Rock",       emoji: "⚡" },
+        { name: "Eye of the Tiger", artist: "Survivor",       genre: "Rock",       emoji: "🐯" },
+        { name: "POWER",            artist: "Kanye West",     genre: "Hip-Hop",    emoji: "💪" },
+        { name: "Stronger",         artist: "Daft Punk",      genre: "Electronic", emoji: "🤖" },
+      ]
+    },
+
+    romantic: {
+      label: "💕 Romantic",
+      vibe: "Soft and tender music for romantic moments. These songs are all about love, closeness, and warmth.",
+      tags: ["love", "soft", "tender", "warm", "intimate"],
+      palette: ["#FFB6C1", "#FF69B4", "#DB7093"],
+      songs: [
+        { name: "Perfect",               artist: "Ed Sheeran",  genre: "Pop",        emoji: "💑" },
+        { name: "All of Me",             artist: "John Legend", genre: "R&B Soul",   emoji: "🌹" },
+        { name: "La Vie en Rose",        artist: "Édith Piaf",  genre: "French Pop", emoji: "🥀" },
+        { name: "Make You Feel My Love", artist: "Adele",       genre: "Pop Soul",   emoji: "💌" },
+        { name: "Lover",                 artist: "Taylor Swift",genre: "Pop",        emoji: "🌷" },
+        { name: "XO",                    artist: "Beyoncé",     genre: "R&B",        emoji: "💋" },
+      ]
+    },
+
+    nostalgic: {
+      label: "📼 Nostalgic",
+      vibe: "Songs that take you back. Whether it's childhood, teenage years, or just a simpler time — these tracks bring it all rushing back.",
+      tags: ["throwback", "memories", "classic", "timeless", "warm"],
+      palette: ["#DEB887", "#D2691E", "#CD853F"],
+      songs: [
+        { name: "Don't You (Forget About Me)", artist: "Simple Minds",  genre: "80s Rock",    emoji: "🎬" },
+        { name: "Mr. Brightside",              artist: "The Killers",   genre: "Indie Rock",  emoji: "📼" },
+        { name: "Take On Me",                  artist: "a-ha",          genre: "80s Pop",     emoji: "✏️" },
+        { name: "Africa",                      artist: "Toto",          genre: "Classic Rock", emoji: "🌍" },
+        { name: "Come As You Are",             artist: "Nirvana",       genre: "Grunge",      emoji: "🎸" },
+        { name: "Dreams",                      artist: "Fleetwood Mac", genre: "Classic Rock", emoji: "☁️" },
+      ]
+    },
+
+    anxious: {
+      label: "😰 Anxious",
+      vibe: "Calming music to help slow things down when your mind is racing. Gentle, slow-paced tracks that can help you breathe.",
+      tags: ["calming", "gentle", "slow", "soothing", "peaceful"],
+      palette: ["#9B59B6", "#8E44AD", "#D7BDE2"],
+      songs: [
+        { name: "Breathe (2 AM)",            artist: "Anna Nalick",          genre: "Indie Pop",  emoji: "🌬️" },
+        { name: "3AM",                       artist: "Matchbox Twenty",      genre: "Rock",       emoji: "🌀" },
+        { name: "The Night Will Always Win", artist: "Manchester Orchestra", genre: "Indie",      emoji: "🌃" },
+        { name: "Holocene",                  artist: "Bon Iver",             genre: "Indie Folk", emoji: "❄️" },
+        { name: "Youth",                     artist: "Daughter",             genre: "Indie Folk", emoji: "🍃" },
+        { name: "Weightless",                artist: "Marconi Union",        genre: "Ambient",    emoji: "🫧" },
+      ]
+    },
+  };
+
+
+  /*
+    App is the main React component.
+    It keeps track of which mood the user has selected using useState.
+  */
+  function App() {
+
+    // selectedMoodId stores the key of the currently selected mood (e.g. "happy")
+    // It starts as null because nothing is selected yet
+    const [selectedMoodId, setSelectedMoodId] = React.useState(null);
+
+    // Look up the full mood object from MOOD_DATA using the selected ID
+    // If nothing is selected, this will be null
+    const selectedMood = selectedMoodId ? MOOD_DATA[selectedMoodId] : null;
+
+    return (
+      <div className="container">
+        <h1>🎵 Mood Music Recommender</h1>
+        <p className="subtitle">Pick how you're feeling and get a playlist</p>
+
+        {/* Mood picker section */}
+        <div className="mood-section">
+          <h2>How are you feeling?</h2>
+          <div className="mood-buttons">
+
+            {/*
+              Object.entries() converts MOOD_DATA into an array of [key, value] pairs
+              so we can loop over it with .map() to create a button for each mood
+            */}
+            {Object.entries(MOOD_DATA).map(([id, mood]) => (
+              <button
+                key={id}
+                // Add the "selected" class if this button's id matches the selected mood
+                className={"mood-btn" + (selectedMoodId === id ? " selected" : "")}
+                // When clicked, update selectedMoodId to this mood's id
+                onClick={() => setSelectedMoodId(id)}
+              >
+                {mood.label}
+              </button>
+            ))}
+
+          </div>
+        </div>
+
+        {/*
+          Conditionally render the results.
+          If a mood is selected, show the playlist.
+          If not, show a placeholder message.
+        */}
+        {selectedMood ? (
+          <div className="results-section">
+            <h2>{selectedMood.label} Playlist</h2>
+
+            {/* Vibe description */}
+            <div className="vibe-box">
+              <p>{selectedMood.vibe}</p>
+            </div>
+
+            {/* Hashtag tags */}
+            <div className="tags">
+              {selectedMood.tags.map((tag, i) => (
+                <span key={i} className="tag">#{tag}</span>
+              ))}
+            </div>
+
+            {/* Colour palette */}
+            <p className="palette-label">Mood colours:</p>
+            <div className="palette">
+              {selectedMood.palette.map((colour, i) => (
+                <div
+                  key={i}
+                  className="palette-colour"
+                  style={{ backgroundColor: colour }}
+                  title={colour} // shows hex code on hover
+                />
+              ))}
+            </div>
+
+            {/* Song list */}
+            <ul className="song-list">
+              {selectedMood.songs.map((song, i) => (
+                <li key={i} className="song-item">
+                  <span className="song-number">{i + 1}</span>
+                  <span className="song-emoji">{song.emoji}</span>
+                  <div className="song-info">
+                    <div className="song-name">{song.name}</div>
+                    <div className="song-artist">{song.artist}</div>
+                  </div>
+                  <span className="song-genre">{song.genre}</span>
+
+                  {/*
+                    YouTube search link.
+                    encodeURIComponent() converts spaces and special characters
+                    into URL-safe format (e.g. "Dua Lipa" becomes "Dua%20Lipa")
+                  */}
+                  <a
+                    className="yt-btn"
+                    href={"https://www.youtube.com/results?search_query=" + encodeURIComponent(song.name + " " + song.artist)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ▶ YouTube
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        ) : (
+          // Nothing selected yet - show a prompt
+          <div className="results-section">
+            <p className="placeholder">👆 Pick a mood above to see your playlist</p>
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  // Mount the React app into the <div id="root"> in the HTML above
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<App />);
+
+</script>
+</body>
+</html>
